@@ -13,7 +13,7 @@ class MyParserRunnable : public QObject, public QRunnable{
 	bool m_bSearchFullPhrase {false};
 	QSharedPointer<bool> m_bForceStop;
 
-	void UseSTDStream();
+	void UseQByteArray();
 	void UseQStream();
 	bool CheckIsTextSuitable(const QString &sText);
 

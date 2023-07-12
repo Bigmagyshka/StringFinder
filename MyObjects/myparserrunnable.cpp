@@ -19,12 +19,16 @@ bool MyParserRunnable::CheckIsTextSuitable(const QString &sText){
 	return true;
 }
 
-void MyParserRunnable::UseSTDStream(){
+void MyParserRunnable::UseQByteArray(){
 	QFile file(m_sPath);
-	if(!file.open(QIODevice::ReadOnly))
-		return;
+	auto pResult = new QTreeWidgetItem(QStringList {m_sPath, "", ""});
 
-	auto pResult = new QTreeWidgetItem(QStringList{m_sPath, "", ""});
+	if(!file.open(QIODevice::ReadOnly))
+	{
+		emit SignalSendResult(pResult, m_nVersion);
+		return;
+	}
+
 	int nLine{0};
 
 	QByteArray data = file.readAll();
@@ -38,10 +42,12 @@ void MyParserRunnable::UseSTDStream(){
 			break;
 
 		++nLine;
-		if(!CheckIsTextSuitable(sLine))
+		auto sLineText = in.readLine().trimmed();
+
+		if(!CheckIsTextSuitable(sLineText))
 			continue;
 
-		pResult->addChild(new QTreeWidgetItem(QStringList{"", QString::number(nLine), sLine}));
+		pResult->addChild(new QTreeWidgetItem(QStringList{"", QString::number(nLine), sLineText}));
 	}
 	file.close();
 
@@ -51,8 +57,13 @@ void MyParserRunnable::UseSTDStream(){
 void MyParserRunnable::UseQStream()
 {
 	QFile file(m_sPath);
+	auto pResult = new QTreeWidgetItem(QStringList {m_sPath, "", ""});
+
 	if(!file.open(QIODevice::ReadOnly))
+	{
+		emit SignalSendResult(pResult, m_nVersion);
 		return;
+	}
 
 	auto pResult = new QTreeWidgetItem(QStringList{m_sPath, "", ""});
 	int nLine{0};
@@ -78,7 +89,7 @@ void MyParserRunnable::UseQStream()
 void MyParserRunnable::run()
 {
 	if(m_bUseOldStyleStream){
-		UseSTDStream();
+		UseQByteArray();
 	}
 	else{
 		UseQStream();
