@@ -65,7 +65,6 @@ void MyParserRunnable::UseQStream()
 		return;
 	}
 
-	auto pResult = new QTreeWidgetItem(QStringList{m_sPath, "", ""});
 	int nLine{0};
 	QTextStream in(&file);
 
