@@ -7,6 +7,7 @@ class MyParserRunnable : public QObject, public QRunnable{
 	Q_OBJECT
 	QString m_sPath;
 	QString m_sText;
+	QRegularExpression m_objRegExp;
 	int m_nVersion {-1};
 	bool m_bUseOldStyleStream {true};
 	bool m_bIsCaseSensetive {false};

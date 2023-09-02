@@ -2,19 +2,33 @@
 #include <qfile.h>
 
 MyParserRunnable::MyParserRunnable(QString sPath, QString sText, int nVersion, bool bUseOldStyleStream, bool bIsCaseSensetive, bool bSearchFullPhrase, QSharedPointer<bool> &bForceStop)
-	: QObject(), QRunnable(), m_sPath(sPath), m_sText(sText), m_nVersion(nVersion)
+	: QObject()
+	, QRunnable()
+	, m_sPath(sPath)
+	, m_sText(sText)
+	, m_nVersion(nVersion)
 	, m_bUseOldStyleStream(bUseOldStyleStream)
 	, m_bIsCaseSensetive(bIsCaseSensetive)
 	, m_bSearchFullPhrase(bSearchFullPhrase)
 	, m_bForceStop(bForceStop)
 {
+	m_objRegExp.setPattern("\\b" + sText + "\\b");
+	if(!bIsCaseSensetive)
+		m_objRegExp.setPatternOptions(QRegularExpression::CaseInsensitiveOption);
 }
 
 bool MyParserRunnable::CheckIsTextSuitable(const QString &sText){
 	if(sText.isEmpty())
 		return false;
-	if(!sText.contains(m_sText, m_bIsCaseSensetive ? Qt::CaseSensitivity::CaseSensitive : Qt::CaseSensitivity::CaseSensitive))
-		return false;
+
+	if(!m_bSearchFullPhrase){
+		if(!sText.contains(m_sText, m_bIsCaseSensetive ? Qt::CaseSensitivity::CaseSensitive : Qt::CaseSensitivity::CaseSensitive))
+			return false;
+	}
+	else{
+		if(!sText.contains(m_objRegExp))
+			return false;
+	}
 
 	return true;
 }
@@ -23,8 +37,7 @@ void MyParserRunnable::UseQByteArray(){
 	QFile file(m_sPath);
 	auto pResult = new QTreeWidgetItem(QStringList {m_sPath, "", ""});
 
-	if(!file.open(QIODevice::ReadOnly))
-	{
+	if(!file.open(QIODevice::ReadOnly)){
 		emit SignalSendResult(pResult, m_nVersion);
 		return;
 	}
@@ -42,7 +55,7 @@ void MyParserRunnable::UseQByteArray(){
 			break;
 
 		++nLine;
-		auto sLineText = in.readLine().trimmed();
+		auto sLineText = sLine.trimmed();
 
 		if(!CheckIsTextSuitable(sLineText))
 			continue;
@@ -54,13 +67,11 @@ void MyParserRunnable::UseQByteArray(){
 	emit SignalSendResult(pResult, m_nVersion);
 }
 
-void MyParserRunnable::UseQStream()
-{
+void MyParserRunnable::UseQStream(){
 	QFile file(m_sPath);
 	auto pResult = new QTreeWidgetItem(QStringList {m_sPath, "", ""});
 
-	if(!file.open(QIODevice::ReadOnly))
-	{
+	if(!file.open(QIODevice::ReadOnly)){
 		emit SignalSendResult(pResult, m_nVersion);
 		return;
 	}
@@ -85,8 +96,7 @@ void MyParserRunnable::UseQStream()
 	emit SignalSendResult(pResult, m_nVersion);
 }
 
-void MyParserRunnable::run()
-{
+void MyParserRunnable::run(){
 	if(m_bUseOldStyleStream){
 		UseQByteArray();
 	}
