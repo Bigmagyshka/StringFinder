@@ -160,10 +160,13 @@
         <property name="orientation">
          <enum>Qt::Vertical</enum>
         </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Maximum</enum>
+        </property>
         <property name="sizeHint" stdset="0">
          <size>
           <width>20</width>
-          <height>40</height>
+          <height>50</height>
          </size>
         </property>
        </spacer>
@@ -178,7 +181,7 @@
       <item>
        <widget class="QScrollArea" name="scrollArea_Subdirectories">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -204,7 +207,7 @@
            <x>0</x>
            <y>0</y>
            <width>348</width>
-           <height>98</height>
+           <height>184</height>
           </rect>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -270,10 +273,13 @@
         <property name="orientation">
          <enum>Qt::Vertical</enum>
         </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Maximum</enum>
+        </property>
         <property name="sizeHint" stdset="0">
          <size>
           <width>20</width>
-          <height>40</height>
+          <height>50</height>
          </size>
         </property>
        </spacer>

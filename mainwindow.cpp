@@ -1,6 +1,7 @@
 #include <QFile>
 #include <QDirIterator>
 
+#include "filehelper.h"
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "dialogchoosepath.h"
@@ -20,21 +21,34 @@ MainWindow::MainWindow(QWidget *parent)
 	restoreGeometry(m_objSettings.value("MainWindow/geometry").toByteArray());
 	restoreState(m_objSettings.value("MainWindow/windowState").toByteArray());
 
-	auto mapSettings = FileHelper::ReadMapFromFile("Settings.ini");
+	m_sPath = m_objSettings.value("MainWindow/Path").toString();
+	if(m_sPath.isEmpty())
+	{
+		auto mapSettings = FileHelper::ReadMapFromFile("Settings.ini");
 
-	m_sPath = mapSettings["path"];
-	m_sInclude = mapSettings["include"];
-	m_sExclude = mapSettings["exclude"];
+		if(mapSettings.contains("path"))
+			m_sPath = mapSettings["path"];
 
-	auto pIsUseSTDStream = mapSettings.find("use_std_stream");
-	if(pIsUseSTDStream != mapSettings.end() && pIsUseSTDStream.value() == 'y')
-		m_bIsUseSTDStream = true;
+		if(mapSettings.contains("include"))
+			m_sInclude = mapSettings["include"];
+
+		if(mapSettings.contains("exclude"))
+			m_sExclude = mapSettings["exclude"];
+
+		if(mapSettings.contains("use_std_stream"))
+			m_bUseByteArrayToRead = mapSettings["use_std_stream"] == 'y';
+	}
 	else
-		m_bIsUseSTDStream = false;
+	{
+		m_sInclude = m_objSettings.value("MainWindow/Includes").toString();
+		m_sExclude = m_objSettings.value("MainWindow/Excludes").toString();
+		m_bUseByteArrayToRead = m_objSettings.value("MainWindow/UseByteArrayToRead").toBool();
+		m_nThreadCount = m_objSettings.value("MainWindow/ThreadCount").toInt();
+
+		m_objThreadPool.setMaxThreadCount(m_nThreadCount);
+	}
 
 	ui->treeWidget->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
-
-//	m_objThreadPool.setMaxThreadCount(1);
 
 	m_bForceStop = QSharedPointer<bool>(new bool {false});
 
@@ -42,22 +56,36 @@ MainWindow::MainWindow(QWidget *parent)
 }
 
 MainWindow::~MainWindow(){
-
 	m_objSettings.setValue("MainWindow/geometry", saveGeometry());
 	m_objSettings.setValue("MainWindow/windowState", saveState());
+
+	m_objSettings.setValue("MainWindow/Path", m_sPath);
+	m_objSettings.setValue("MainWindow/Includes", m_sInclude);
+	m_objSettings.setValue("MainWindow/Excludes", m_sExclude);
+	m_objSettings.setValue("MainWindow/UseByteArrayToRead", m_bUseByteArrayToRead);
+	m_objSettings.setValue("MainWindow/ThreadCount", m_nThreadCount);
 
 	delete ui;
 }
 
 void MainWindow::on_OpenDlgChoosePath_triggered(){
 
-	DialogChoosePath dlgChoosePath(m_sPath, m_sInclude, m_sExclude, m_bIsUseSTDStream);
+	DialogChoosePath dlgChoosePath(m_sPath, m_sInclude, m_sExclude, m_bUseByteArrayToRead, m_nThreadCount);
 
 	if (dlgChoosePath.exec() == 1){
 		m_sPath = dlgChoosePath.GetPath();
 		m_sInclude = dlgChoosePath.GetInclude();
 		m_sExclude = dlgChoosePath.GetExclude();
-		m_bIsUseSTDStream = dlgChoosePath.GetIsUseSTDStream();
+		m_bUseByteArrayToRead = dlgChoosePath.GetIsUseSTDStream();
+		m_nThreadCount = dlgChoosePath.GetThreadCount();
+
+		m_objSettings.setValue("MainWindow/Path", m_sPath);
+		m_objSettings.setValue("MainWindow/Includes", m_sInclude);
+		m_objSettings.setValue("MainWindow/Excludes", m_sExclude);
+		m_objSettings.setValue("MainWindow/UseByteArrayToRead", m_bUseByteArrayToRead);
+		m_objSettings.setValue("MainWindow/ThreadCount", m_nThreadCount);
+
+		m_objThreadPool.setMaxThreadCount(m_nThreadCount);
 
 		ReCreateDlgElements();
 	}
@@ -82,6 +110,7 @@ void MainWindow::SlotThreadEndWork(QTreeWidgetItem *pItem, int nVersion){
 		m_listLocalItems.clear();
 		ui->treeWidget->ReloadAllItems(GetAllCmbText());
 		ui->treeWidget->setEnabled(true);
+		ReCreateSearchZone();
 	}
 }
 
@@ -105,7 +134,6 @@ void MainWindow::ReCreateDlgElements(){
 	ui->lcd_Count->display(static_cast<double>(m_vecCurrentPaths.size()));
 	ui->lcd_Volume->display(dSize);
 
-	ReCreateSearchZone();
 	m_objThreadPool.clear();
 	++m_nVersion;
 	ui->treeWidget->clear();
@@ -122,10 +150,20 @@ void MainWindow::ReCreateSearchZone(){
 		elem->deleteLater();
 	}
 
-	auto vecAllLevels = GetAllLevels(m_vecCurrentPaths);
+	QVector<QString> vecCurItemsPath;
+	vecCurItemsPath.reserve(ui->treeWidget->topLevelItemCount());
+	for(int i = 0; i < ui->treeWidget->topLevelItemCount(); ++i){
+		auto item = ui->treeWidget->topLevelItem(i);
+		auto sFullPath = item->text(0);
+		auto sLocalPath = sFullPath.replace(m_sPath, "");
+		vecCurItemsPath.emplaceBack(sLocalPath);
+	}
+
+	auto vecAllLevels = GetAllLevels(vecCurItemsPath);
 	auto layout = ui->scrollAreaWidgetContents->layout();
 	QVector<MyQComboBox *> vecNewCmb;
 	int nLvl{1};
+
 	for (const auto &set : vecAllLevels){
 
 		auto label = new QLabel{"Lvl" + QString::number(nLvl)};
@@ -251,7 +289,7 @@ void MainWindow::on_button_Search_released(){
 	auto bIsSearchFullPhrase = ui->checkBoxSearchFullPhrase->isChecked();
 
 	for(const auto &sPath : m_vecCurrentPaths){
-		auto pFuncForCalc = new MyParserRunnable(m_sPath + "/" + sPath, sText, m_nVersion, m_bIsUseSTDStream, bIsCaseSensetive, bIsSearchFullPhrase, m_bForceStop);
+		auto pFuncForCalc = new MyParserRunnable(m_sPath + "/" + sPath, sText, m_nVersion, m_bUseByteArrayToRead, bIsCaseSensetive, bIsSearchFullPhrase, m_bForceStop);
 		connect(pFuncForCalc, &MyParserRunnable::SignalSendResult
 				, this, &MainWindow::SlotThreadEndWork);
 

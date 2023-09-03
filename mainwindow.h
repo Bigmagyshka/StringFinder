@@ -18,8 +18,9 @@ class MainWindow : public QMainWindow
 	QString m_sPath;
 	QString m_sInclude;
 	QString m_sExclude;
-	bool m_bIsUseSTDStream {false};
+	bool m_bUseByteArrayToRead {false};
 	QVector<QString> m_vecCurrentPaths;
+	int m_nThreadCount {1};
 	QThreadPool m_objThreadPool;
 	int m_nVersion{0};
 	int m_nProgress{0};
