@@ -155,7 +155,7 @@ void MainWindow::ReCreateSearchZone(){
 	for(int i = 0; i < ui->treeWidget->topLevelItemCount(); ++i){
 		auto item = ui->treeWidget->topLevelItem(i);
 		auto sFullPath = item->text(0);
-		auto sLocalPath = sFullPath.replace(m_sPath, "");
+		auto sLocalPath = sFullPath.replace(m_sPath + "/", "");
 		vecCurItemsPath.emplaceBack(sLocalPath);
 	}
 
