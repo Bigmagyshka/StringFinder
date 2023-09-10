@@ -4,6 +4,14 @@ greaterThan(QT_MAJOR_VERSION, 5): QT += widgets
 
 CONFIG += c++11
 
+VERSION = 1.04a
+DEFINES += APP_VERSION=$$VERSION
+
+QMAKE_TARGET_COMPANY = BiGMaG
+QMAKE_TARGET_PRODUCT = StringFinder
+QMAKE_TARGET_COPYRIGHT = BiGMaG
+RC_ICONS =  res/Icon.ico
+
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
@@ -37,4 +45,4 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 DISTFILES += \
-    res/Icon.jpg
+    res/Icon.ico
