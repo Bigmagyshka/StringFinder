@@ -3,15 +3,24 @@
 #include <QRunnable>
 #include <QTreeWidgetItem>
 
-class MyParserRunnable : public QObject, public QRunnable{
+class MyParserRunnable
+	: public QObject
+	, public QRunnable {
 	Q_OBJECT
 	QString m_sPath;
-	QString m_sText;
-	QRegularExpression m_objRegExp;
+	QVector<QString> m_vecIncludeText;
+	QVector<QRegularExpression> m_vecRegExpInclude;
+	bool m_bIsCaseSensetiveInclude {false};
+	bool m_bSearchFullPhraseInclude {false};
+
+	QVector<QString> m_vecExcludeText;
+	QVector<QRegularExpression> m_vecRegExpExclude;
+	bool m_bIsCaseSensetiveExclude {false};
+	bool m_bSearchFullPhraseExclude {false};
+
 	int m_nVersion {-1};
 	bool m_bUseOldStyleStream {true};
-	bool m_bIsCaseSensetive {false};
-	bool m_bSearchFullPhrase {false};
+
 	QSharedPointer<bool> m_bForceStop;
 
 	void UseQByteArray();
@@ -19,7 +28,9 @@ class MyParserRunnable : public QObject, public QRunnable{
 	bool CheckIsTextSuitable(const QString &sText);
 
 public:
-	MyParserRunnable(QString sPath, QString sText, int nVersion, bool bUseOldStyleStream, bool bIsCaseSensetive, bool bSearchFullPhrase, QSharedPointer<bool> &bForceStop);
+	MyParserRunnable(const QString &sPath, const QString &sIncludeText, const QString &sExcludeText, int nVersion, bool bUseOldStyleStream,
+					 bool bIsCaseSensetiveInclude, bool bSearchFullPhraseInclude, bool bIsCaseSensetiveExclude, bool bSearchFullPhraseExclude,
+					 QSharedPointer<bool> &bForceStop);
 	virtual ~MyParserRunnable() = default;
 	void run();
 

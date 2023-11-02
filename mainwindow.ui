@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>656</height>
+    <width>727</width>
+    <height>708</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -25,6 +25,12 @@
        <layout class="QGridLayout" name="gridLayout">
         <item row="1" column="0">
          <widget class="QLabel" name="label_3">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="text">
            <string>Общий объём (в ГБ)</string>
           </property>
@@ -32,6 +38,12 @@
         </item>
         <item row="0" column="0">
          <widget class="QLabel" name="label_2">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="text">
            <string>Количество файлов</string>
           </property>
@@ -39,6 +51,12 @@
         </item>
         <item row="0" column="1">
          <widget class="QLCDNumber" name="lcd_Count">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="frameShape">
            <enum>QFrame::StyledPanel</enum>
           </property>
@@ -49,6 +67,12 @@
         </item>
         <item row="1" column="1">
          <widget class="QLCDNumber" name="lcd_Volume">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="frameShape">
            <enum>QFrame::StyledPanel</enum>
           </property>
@@ -92,12 +116,12 @@
          </size>
         </property>
         <property name="text">
-         <string>Введите текст:</string>
+         <string>Искать текст:</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QTextBrowser" name="textBrowser_Dlg_Name">
+       <widget class="QTextBrowser" name="textBrowser_includeText">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
           <horstretch>0</horstretch>
@@ -126,10 +150,10 @@
          <set>Qt::ImhNone</set>
         </property>
         <property name="verticalScrollBarPolicy">
-         <enum>Qt::ScrollBarAlwaysOff</enum>
+         <enum>Qt::ScrollBarAsNeeded</enum>
         </property>
         <property name="horizontalScrollBarPolicy">
-         <enum>Qt::ScrollBarAlwaysOff</enum>
+         <enum>Qt::ScrollBarAsNeeded</enum>
         </property>
         <property name="lineWrapMode">
          <enum>QTextEdit::NoWrap</enum>
@@ -143,17 +167,69 @@
        </widget>
       </item>
       <item>
-       <widget class="QCheckBox" name="checkBoxCaseSensetive">
+       <widget class="QCheckBox" name="checkBoxCaseSensetiveInclude">
         <property name="text">
          <string>Учитывать регистр</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QCheckBox" name="checkBoxSearchFullPhrase">
+       <widget class="QCheckBox" name="checkBoxSearchFullPhraseInclude">
         <property name="enabled">
          <bool>true</bool>
         </property>
+        <property name="text">
+         <string>Искать слово(фразу) целиком</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Исключать текст:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QTextBrowser" name="textBrowser_excludeText">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>100</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>350</width>
+          <height>60</height>
+         </size>
+        </property>
+        <property name="inputMethodHints">
+         <set>Qt::ImhNone</set>
+        </property>
+        <property name="lineWrapMode">
+         <enum>QTextEdit::NoWrap</enum>
+        </property>
+        <property name="readOnly">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="checkBoxCaseSensetiveExclude">
+        <property name="text">
+         <string>Учитывать регистр</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="checkBoxSearchFullPhraseExclude">
         <property name="text">
          <string>Искать слово(фразу) целиком</string>
         </property>
@@ -165,12 +241,12 @@
          <enum>Qt::Vertical</enum>
         </property>
         <property name="sizeType">
-         <enum>QSizePolicy::Maximum</enum>
+         <enum>QSizePolicy::MinimumExpanding</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>
           <width>20</width>
-          <height>50</height>
+          <height>20</height>
          </size>
         </property>
        </spacer>
@@ -187,7 +263,7 @@
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
           <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
+          <verstretch>50</verstretch>
          </sizepolicy>
         </property>
         <property name="minimumSize">
@@ -199,7 +275,7 @@
         <property name="maximumSize">
          <size>
           <width>350</width>
-          <height>1000</height>
+          <height>10000</height>
          </size>
         </property>
         <property name="widgetResizable">
@@ -211,7 +287,7 @@
            <x>0</x>
            <y>0</y>
            <width>348</width>
-           <height>184</height>
+           <height>149</height>
           </rect>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -278,12 +354,12 @@
          <enum>Qt::Vertical</enum>
         </property>
         <property name="sizeType">
-         <enum>QSizePolicy::Maximum</enum>
+         <enum>QSizePolicy::MinimumExpanding</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>
           <width>20</width>
-          <height>50</height>
+          <height>20</height>
          </size>
         </property>
        </spacer>
@@ -426,7 +502,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>727</width>
      <height>22</height>
     </rect>
    </property>

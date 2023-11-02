@@ -49,4 +49,6 @@ private slots:
 
 public slots:
 	void SlotThreadEndWork(QTreeWidgetItem *pItem, int nVersion);
+private:
+        void ReadSettingsFromIni();
 };

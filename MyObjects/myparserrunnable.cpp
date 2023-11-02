@@ -1,48 +1,104 @@
 #include "myparserrunnable.h"
+
 #include <qfile.h>
 
-MyParserRunnable::MyParserRunnable(QString sPath, QString sText, int nVersion, bool bUseOldStyleStream, bool bIsCaseSensetive, bool bSearchFullPhrase, QSharedPointer<bool> &bForceStop)
+MyParserRunnable::MyParserRunnable(const QString &sPath, const QString &sIncludeText, const QString &sExcludeText, int nVersion,
+								   bool bUseOldStyleStream, bool bIsCaseSensetiveInclude, bool bSearchFullPhraseInclude, bool bIsCaseSensetiveExclude,
+								   bool bSearchFullPhraseExclude, QSharedPointer<bool> &bForceStop)
 	: QObject()
 	, QRunnable()
 	, m_sPath(sPath)
-	, m_sText(sText)
+	, m_bIsCaseSensetiveInclude(bIsCaseSensetiveInclude)
+	, m_bSearchFullPhraseInclude(bSearchFullPhraseInclude)
+	, m_bIsCaseSensetiveExclude(bIsCaseSensetiveExclude)
+	, m_bSearchFullPhraseExclude(bSearchFullPhraseExclude)
 	, m_nVersion(nVersion)
 	, m_bUseOldStyleStream(bUseOldStyleStream)
-	, m_bIsCaseSensetive(bIsCaseSensetive)
-	, m_bSearchFullPhrase(bSearchFullPhrase)
-	, m_bForceStop(bForceStop)
-{
-	m_objRegExp.setPattern("\\b" + sText + "\\b");
-	if(!bIsCaseSensetive)
-		m_objRegExp.setPatternOptions(QRegularExpression::CaseInsensitiveOption);
+	, m_bForceStop(bForceStop) {
+	m_vecIncludeText = sIncludeText.split('\n');
+	m_vecExcludeText = sExcludeText.split('\n');
+
+	if(m_bSearchFullPhraseInclude) {
+		for(auto &str: m_vecIncludeText) {
+			QRegularExpression obj;
+			obj.setPattern("\\b" + str + "\\b");
+			if(!bIsCaseSensetiveInclude)
+				obj.setPatternOptions(QRegularExpression::CaseInsensitiveOption);
+			m_vecRegExpInclude.emplaceBack(obj);
+		}
+	}
+	if(m_bSearchFullPhraseExclude) {
+		for(auto &str: m_vecExcludeText) {
+			QRegularExpression obj;
+			obj.setPattern("\\b" + str + "\\b");
+			if(!bIsCaseSensetiveExclude)
+				obj.setPatternOptions(QRegularExpression::CaseInsensitiveOption);
+			m_vecRegExpExclude.emplaceBack(obj);
+		}
+	}
 }
 
-bool MyParserRunnable::CheckIsTextSuitable(const QString &sText){
+bool MyParserRunnable::CheckIsTextSuitable(const QString &sText) {
 	if(sText.isEmpty())
 		return false;
 
-	if(!m_bSearchFullPhrase){
-		if(!sText.contains(m_sText, m_bIsCaseSensetive ? Qt::CaseSensitivity::CaseSensitive : Qt::CaseSensitivity::CaseSensitive))
-			return false;
+	bool bFind {false};
+	if(m_bSearchFullPhraseInclude) {
+		for(auto &obj: m_vecRegExpInclude) {
+			if(!sText.contains(obj))
+				continue;
+
+			bFind = true;
+			break;
+		}
+	} else {
+		for(auto &str: m_vecIncludeText) {
+			if(!sText.contains(str, m_bIsCaseSensetiveInclude ? Qt::CaseSensitivity::CaseSensitive : Qt::CaseSensitivity::CaseSensitive))
+				continue;
+
+			bFind = true;
+			break;
+		}
 	}
-	else{
-		if(!sText.contains(m_objRegExp))
-			return false;
+
+	if(!bFind)
+		return false;
+
+	bFind = false;
+	if(m_bSearchFullPhraseExclude) {
+		for(auto &obj: m_vecRegExpExclude) {
+			if(!sText.contains(obj))
+				continue;
+
+			bFind = true;
+			break;
+		}
+	} else {
+		for(auto &str: m_vecExcludeText) {
+			if(!sText.contains(str, m_bIsCaseSensetiveExclude ? Qt::CaseSensitivity::CaseSensitive : Qt::CaseSensitivity::CaseSensitive))
+				continue;
+
+			bFind = true;
+			break;
+		}
 	}
+
+	if(bFind)
+		return false;
 
 	return true;
 }
 
-void MyParserRunnable::UseQByteArray(){
+void MyParserRunnable::UseQByteArray() {
 	QFile file(m_sPath);
 	auto pResult = new QTreeWidgetItem(QStringList {m_sPath, "", ""});
 
-	if(!file.open(QIODevice::ReadOnly)){
+	if(!file.open(QIODevice::ReadOnly)) {
 		emit SignalSendResult(pResult, m_nVersion);
 		return;
 	}
 
-	int nLine{0};
+	int nLine {0};
 
 	QByteArray data = file.readAll();
 	auto text {QString::fromLocal8Bit(data)};
@@ -50,7 +106,7 @@ void MyParserRunnable::UseQByteArray(){
 	auto listSplited = text.split('\n');
 	text.clear();
 
-	for(const auto &sLine : listSplited){
+	for(const auto &sLine: listSplited) {
 		if(*m_bForceStop)
 			break;
 
@@ -60,26 +116,26 @@ void MyParserRunnable::UseQByteArray(){
 		if(!CheckIsTextSuitable(sLineText))
 			continue;
 
-		pResult->addChild(new QTreeWidgetItem(QStringList{"", QString::number(nLine), sLineText}));
+		pResult->addChild(new QTreeWidgetItem(QStringList {"", QString::number(nLine), sLineText}));
 	}
 	file.close();
 
 	emit SignalSendResult(pResult, m_nVersion);
 }
 
-void MyParserRunnable::UseQStream(){
+void MyParserRunnable::UseQStream() {
 	QFile file(m_sPath);
 	auto pResult = new QTreeWidgetItem(QStringList {m_sPath, "", ""});
 
-	if(!file.open(QIODevice::ReadOnly)){
+	if(!file.open(QIODevice::ReadOnly)) {
 		emit SignalSendResult(pResult, m_nVersion);
 		return;
 	}
 
-	int nLine{0};
+	int nLine {0};
 	QTextStream in(&file);
 
-	while(!in.atEnd()){
+	while(!in.atEnd()) {
 		if(*m_bForceStop)
 			break;
 
@@ -89,18 +145,16 @@ void MyParserRunnable::UseQStream(){
 		if(!CheckIsTextSuitable(sLineText))
 			continue;
 
-		pResult->addChild(new QTreeWidgetItem(QStringList{"", QString::number(nLine), sLineText}));
+		pResult->addChild(new QTreeWidgetItem(QStringList {"", QString::number(nLine), sLineText}));
 	}
 	file.close();
 
 	emit SignalSendResult(pResult, m_nVersion);
 }
 
-void MyParserRunnable::run(){
-	if(m_bUseOldStyleStream){
+void MyParserRunnable::run() {
+	if(m_bUseOldStyleStream)
 		UseQByteArray();
-	}
-	else{
+	else
 		UseQStream();
-	}
 }

@@ -1,53 +1,26 @@
-#include <QFile>
-#include <QDirIterator>
-
-#include "filehelper.h"
 #include "mainwindow.h"
-#include "ui_mainwindow.h"
-#include "dialogchoosepath.h"
+
+#include "MyObjects/myparserrunnable.h"
 #include "MyObjects/myqcombobox.h"
 #include "MyObjects/myqtreewidget.h"
-#include "MyObjects/myparserrunnable.h"
+#include "dialogchoosepath.h"
+#include "filehelper.h"
+#include "ui_mainwindow.h"
 
+#include <QDirIterator>
+#include <QFile>
+#include <QMessageBox>
 #include <QThread>
 
-
-MainWindow::MainWindow(QWidget *parent)
-	: QMainWindow(parent)
-	, ui(new Ui::MainWindow)
-{
+MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
 	ui->setupUi(this);
 
 	restoreGeometry(m_objSettings.value("MainWindow/geometry").toByteArray());
 	restoreState(m_objSettings.value("MainWindow/windowState").toByteArray());
 
-	m_sPath = m_objSettings.value("MainWindow/Path").toString();
-	if(m_sPath.isEmpty())
-	{
-		auto mapSettings = FileHelper::ReadMapFromFile("Settings.ini");
+	ReadSettingsFromIni();
 
-		if(mapSettings.contains("path"))
-			m_sPath = mapSettings["path"];
-
-		if(mapSettings.contains("include"))
-			m_sInclude = mapSettings["include"];
-
-		if(mapSettings.contains("exclude"))
-			m_sExclude = mapSettings["exclude"];
-
-		if(mapSettings.contains("use_std_stream"))
-			m_bUseByteArrayToRead = mapSettings["use_std_stream"] == 'y';
-	}
-	else
-	{
-		m_sInclude = m_objSettings.value("MainWindow/Includes").toString();
-		m_sExclude = m_objSettings.value("MainWindow/Excludes").toString();
-		m_bUseByteArrayToRead = m_objSettings.value("MainWindow/UseByteArrayToRead").toBool();
-		m_nThreadCount = m_objSettings.value("MainWindow/ThreadCount").toInt();
-
-		m_objThreadPool.setMaxThreadCount(m_nThreadCount);
-	}
-
+	m_objThreadPool.setMaxThreadCount(m_nThreadCount);
 	ui->treeWidget->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
 
 	m_bForceStop = QSharedPointer<bool>(new bool {false});
@@ -55,7 +28,7 @@ MainWindow::MainWindow(QWidget *parent)
 	ReCreateDlgElements();
 }
 
-MainWindow::~MainWindow(){
+MainWindow::~MainWindow() {
 	m_objSettings.setValue("MainWindow/geometry", saveGeometry());
 	m_objSettings.setValue("MainWindow/windowState", saveState());
 
@@ -68,44 +41,68 @@ MainWindow::~MainWindow(){
 	delete ui;
 }
 
-void MainWindow::on_OpenDlgChoosePath_triggered(){
+void MainWindow::ReadSettingsFromIni() {
+	auto mapSettings = FileHelper::ReadMapFromFile("Settings.ini");
 
-	DialogChoosePath dlgChoosePath(m_sPath, m_sInclude, m_sExclude, m_bUseByteArrayToRead, m_nThreadCount);
-
-	if (dlgChoosePath.exec() == 1){
-		m_sPath = dlgChoosePath.GetPath();
-		m_sInclude = dlgChoosePath.GetInclude();
-		m_sExclude = dlgChoosePath.GetExclude();
-		m_bUseByteArrayToRead = dlgChoosePath.GetIsUseSTDStream();
-		m_nThreadCount = dlgChoosePath.GetThreadCount();
-
-		m_objSettings.setValue("MainWindow/Path", m_sPath);
-		m_objSettings.setValue("MainWindow/Includes", m_sInclude);
-		m_objSettings.setValue("MainWindow/Excludes", m_sExclude);
-		m_objSettings.setValue("MainWindow/UseByteArrayToRead", m_bUseByteArrayToRead);
-		m_objSettings.setValue("MainWindow/ThreadCount", m_nThreadCount);
-
-		m_objThreadPool.setMaxThreadCount(m_nThreadCount);
-
-		ReCreateDlgElements();
+	if(mapSettings.empty()) {
+		QMessageBox::warning(this, tr(APP_NAME), tr("Settings.ini is empty or does not exist.\nIt will be created after the settings are applied."));
+		return;
 	}
+
+	if(mapSettings.contains("path"))
+		m_sPath = mapSettings ["path"];
+
+	if(mapSettings.contains("include"))
+		m_sInclude = mapSettings ["include"];
+
+	if(mapSettings.contains("exclude"))
+		m_sExclude = mapSettings ["exclude"];
+
+	if(mapSettings.contains("use_std_stream"))
+		m_bUseByteArrayToRead = mapSettings ["use_std_stream"] == 'y';
+
+	if(mapSettings.contains("ThreadCount"))
+		m_nThreadCount = mapSettings ["ThreadCount"].toInt();
 }
 
-void MainWindow::on_Reload_triggered(){
+void MainWindow::on_OpenDlgChoosePath_triggered() {
+	DialogChoosePath dlgChoosePath(m_sPath, m_sInclude, m_sExclude, m_bUseByteArrayToRead, m_nThreadCount);
+
+	if(dlgChoosePath.exec() != 1)
+		return;
+
+	m_sPath = dlgChoosePath.GetPath();
+	m_sInclude = dlgChoosePath.GetInclude();
+	m_sExclude = dlgChoosePath.GetExclude();
+	m_bUseByteArrayToRead = dlgChoosePath.GetIsUseSTDStream();
+	m_nThreadCount = dlgChoosePath.GetThreadCount();
+
+	FileHelper::WriteVecToFile("Settings.ini", {
+												   {"path",					m_sPath							   },
+												   {"include",			   m_sInclude						 },
+												   {"exclude",			   m_sExclude						 },
+												   {"use_byteArray_to_read", {m_bUseByteArrayToRead ? 'y' : 'n'}},
+												   {"thread_count",			QString::number(m_nThreadCount)	   }
+	});
+
+	m_objThreadPool.setMaxThreadCount(m_nThreadCount);
+
 	ReCreateDlgElements();
 }
 
-void MainWindow::SlotThreadEndWork(QTreeWidgetItem *pItem, int nVersion){
+void MainWindow::on_Reload_triggered() {
+	ReCreateDlgElements();
+}
+
+void MainWindow::SlotThreadEndWork(QTreeWidgetItem *pItem, int nVersion) {
 	ui->progressBar->setValue(++m_nProgress);
 
-	if(nVersion != m_nVersion || pItem->childCount() == 0){
+	if(nVersion != m_nVersion || pItem->childCount() == 0)
 		delete pItem;
-	}
-	else{
+	else
 		m_listLocalItems.emplaceBack(pItem);
-	}
 
-	if(m_nProgress == m_vecCurrentPaths.size()){
+	if(m_nProgress == m_vecCurrentPaths.size()) {
 		ui->treeWidget->insertTopLevelItems(0, m_listLocalItems);
 		m_listLocalItems.clear();
 		ui->treeWidget->ReloadAllItems(GetAllCmbText());
@@ -114,10 +111,10 @@ void MainWindow::SlotThreadEndWork(QTreeWidgetItem *pItem, int nVersion){
 	}
 }
 
-QVector<QString> MainWindow::GetAllCmbText(){
+QVector<QString> MainWindow::GetAllCmbText() {
 	QVector<QString> vecCurValues;
 
-	for(auto &elem : ui->scrollArea_Subdirectories->widget()->children()){
+	for(auto &elem: ui->scrollArea_Subdirectories->widget()->children()) {
 		auto cmb = dynamic_cast<MyQComboBox *>(elem);
 		if(!cmb)
 			continue;
@@ -127,7 +124,7 @@ QVector<QString> MainWindow::GetAllCmbText(){
 	return vecCurValues;
 }
 
-void MainWindow::ReCreateDlgElements(){
+void MainWindow::ReCreateDlgElements() {
 	auto [vecCurrentPaths, dSize] = GetPath2AllFiles();
 	m_vecCurrentPaths = vecCurrentPaths;
 
@@ -142,17 +139,17 @@ void MainWindow::ReCreateDlgElements(){
 	ui->progressBar->setValue(0);
 }
 
-void MainWindow::ReCreateSearchZone(){
-	for(auto elem : ui->scrollAreaWidgetContents->children()){
+void MainWindow::ReCreateSearchZone() {
+	for(auto elem: ui->scrollAreaWidgetContents->children()) {
 		if(auto layout = dynamic_cast<QLayout *>(elem))
 			continue;
-		//We need to delete all items instead of layout
+		// We need to delete all items instead of layout
 		elem->deleteLater();
 	}
 
 	QVector<QString> vecCurItemsPath;
 	vecCurItemsPath.reserve(ui->treeWidget->topLevelItemCount());
-	for(int i = 0; i < ui->treeWidget->topLevelItemCount(); ++i){
+	for(int i = 0; i < ui->treeWidget->topLevelItemCount(); ++i) {
 		auto item = ui->treeWidget->topLevelItem(i);
 		auto sFullPath = item->text(0);
 		auto sLocalPath = sFullPath.replace(m_sPath + "/", "");
@@ -162,11 +159,10 @@ void MainWindow::ReCreateSearchZone(){
 	auto vecAllLevels = GetAllLevels(vecCurItemsPath);
 	auto layout = ui->scrollAreaWidgetContents->layout();
 	QVector<MyQComboBox *> vecNewCmb;
-	int nLvl{1};
+	int nLvl {1};
 
-	for (const auto &set : vecAllLevels){
-
-		auto label = new QLabel{"Lvl" + QString::number(nLvl)};
+	for(const auto &set: vecAllLevels) {
+		auto label = new QLabel {"Lvl" + QString::number(nLvl)};
 		label->setMaximumSize(350, 25);
 		layout->addWidget(label);
 
@@ -182,43 +178,38 @@ void MainWindow::ReCreateSearchZone(){
 	}
 
 
-	for(int nFirst{0}; nFirst < vecNewCmb.size() - 1; nFirst++){
-		auto cmbFirst = vecNewCmb[nFirst];
+	for(int nFirst {0}; nFirst < vecNewCmb.size() - 1; nFirst++) {
+		auto cmbFirst = vecNewCmb [nFirst];
 
-		for(int nSecond{nFirst + 1}; nSecond < vecNewCmb.size(); nSecond++){
-			connect(cmbFirst, &MyQComboBox::SignalValueChanged
-				, vecNewCmb[nSecond], &MyQComboBox::SlotValueChanged);
-		}
+		for(int nSecond {nFirst + 1}; nSecond < vecNewCmb.size(); nSecond++)
+			connect(cmbFirst, &MyQComboBox::SignalValueChanged, vecNewCmb [nSecond], &MyQComboBox::SlotValueChanged);
 
-		connect(cmbFirst, &MyQComboBox::SignalValueChanged
-			, ui->treeWidget, &MyQTreeWidget::SlotSearchChanged);
+		connect(cmbFirst, &MyQComboBox::SignalValueChanged, ui->treeWidget, &MyQTreeWidget::SlotSearchChanged);
 	}
 
 	if(!vecNewCmb.isEmpty())
-		connect(vecNewCmb.last(), &MyQComboBox::SignalValueChanged
-			, ui->treeWidget, &MyQTreeWidget::SlotSearchChanged);
+		connect(vecNewCmb.last(), &MyQComboBox::SignalValueChanged, ui->treeWidget, &MyQTreeWidget::SlotSearchChanged);
 }
 
-QPair<QVector<QString>, double> MainWindow::GetPath2AllFiles(){
+QPair<QVector<QString>, double> MainWindow::GetPath2AllFiles() {
 	QVector<QString> vecLocalPaths;
 	double dSize {0.0};
 	QDirIterator it(m_sPath, QDir::Files, QDirIterator::Subdirectories);
 
 	auto sExcludeLines = m_sExclude.split(",", Qt::SkipEmptyParts);
-	for(auto &sLine : sExcludeLines){
+	for(auto &sLine: sExcludeLines)
 		sLine = sLine.trimmed();
-	}
-	auto sIncludeLines = m_sInclude.split(",", Qt::SkipEmptyParts);
-	for(auto &sLine : sIncludeLines){
-		sLine = sLine.trimmed();
-	}
 
-	while (it.hasNext()){
+	auto sIncludeLines = m_sInclude.split(",", Qt::SkipEmptyParts);
+	for(auto &sLine: sIncludeLines)
+		sLine = sLine.trimmed();
+
+	while(it.hasNext()) {
 		QFile f(it.next());
 
 		bool bSkip {false};
-		for(const auto &sLine : sExcludeLines){
-			if(it.filePath().contains(sLine, Qt::CaseSensitivity::CaseSensitive)){
+		for(const auto &sLine: sExcludeLines) {
+			if(it.filePath().contains(sLine, Qt::CaseSensitivity::CaseSensitive)) {
 				bSkip = true;
 				break;
 			}
@@ -227,8 +218,8 @@ QPair<QVector<QString>, double> MainWindow::GetPath2AllFiles(){
 			continue;
 
 		bSkip = !sIncludeLines.empty();
-		for(const auto &sLine : sIncludeLines){
-			if(it.filePath().contains(sLine, Qt::CaseSensitivity::CaseSensitive)){
+		for(const auto &sLine: sIncludeLines) {
+			if(it.filePath().contains(sLine, Qt::CaseSensitivity::CaseSensitive)) {
 				bSkip = false;
 				break;
 			}
@@ -236,17 +227,16 @@ QPair<QVector<QString>, double> MainWindow::GetPath2AllFiles(){
 		if(bSkip)
 			continue;
 
-		dSize += static_cast<double>(it.fileInfo().size())/1024/1024/1024;
+		dSize += static_cast<double>(it.fileInfo().size()) / 1024 / 1024 / 1024;
 		vecLocalPaths.emplaceBack(it.filePath().remove(0, m_sPath.size() + 1));
 	}
 	return {vecLocalPaths, dSize};
 }
 
-QVector<QSet<QString>> MainWindow::GetAllLevels(QVector<QString> &vec){
-
+QVector<QSet<QString>> MainWindow::GetAllLevels(QVector<QString> &vec) {
 	QVector<QSet<QString>> vecAllLvls;
 
-	for(const auto &sElem : vec){
+	for(const auto &sElem: vec) {
 		auto sSepLines = sElem.split("/");
 		if(sSepLines.size() == 1)
 			continue;
@@ -255,60 +245,64 @@ QVector<QSet<QString>> MainWindow::GetAllLevels(QVector<QString> &vec){
 			vecAllLvls.push_back(QSet<QString>());
 
 		for(int nLvl = 0; nLvl < sSepLines.size() - 1; nLvl++)
-			vecAllLvls[nLvl].insert(sSepLines[nLvl]);
+			vecAllLvls [nLvl].insert(sSepLines [nLvl]);
 	}
 
 	return vecAllLvls;
 }
 
-void MainWindow::on_button_Clear_released(){
-   for(auto &elem : ui->scrollArea_Subdirectories->widget()->children()){
-	   auto cmb = dynamic_cast<MyQComboBox *>(elem);
-	   if(!cmb)
-		   continue;
+void MainWindow::on_button_Clear_released() {
+	for(auto &elem: ui->scrollArea_Subdirectories->widget()->children()) {
+		auto cmb = dynamic_cast<MyQComboBox *>(elem);
+		if(!cmb)
+			continue;
 		cmb->setCurrentIndex(0);
-   }
+	}
 }
 
-void MainWindow::on_button_Search_released(){
-	if(ui->textBrowser_Dlg_Name->toPlainText().isEmpty())
+void MainWindow::on_button_Search_released() {
+	if(ui->textBrowser_includeText->toPlainText().isEmpty())
 		return;
 
 	++m_nVersion;
 	m_objThreadPool.clear();
 	ui->treeWidget->clear();
 	ui->treeWidget->setEnabled(false);
-	for(auto p : m_listLocalItems)
+	for(auto p: m_listLocalItems)
 		delete p;
 	m_listLocalItems.clear();
 
 	m_nProgress = 0;
 	ui->progressBar->setValue(m_nProgress);
-	auto sText = ui->textBrowser_Dlg_Name->toPlainText().trimmed();
-	auto bIsCaseSensetive = ui->checkBoxCaseSensetive->isChecked();
-	auto bIsSearchFullPhrase = ui->checkBoxSearchFullPhrase->isChecked();
 
-	for(const auto &sPath : m_vecCurrentPaths){
-		auto pFuncForCalc = new MyParserRunnable(m_sPath + "/" + sPath, sText, m_nVersion, m_bUseByteArrayToRead, bIsCaseSensetive, bIsSearchFullPhrase, m_bForceStop);
-		connect(pFuncForCalc, &MyParserRunnable::SignalSendResult
-				, this, &MainWindow::SlotThreadEndWork);
+	auto sIncludeText = ui->textBrowser_includeText->toPlainText().trimmed();
+	auto bIsCaseSensetiveInclude = ui->checkBoxCaseSensetiveInclude->isChecked();
+	auto bIsSearchFullPhraseInclude = ui->checkBoxSearchFullPhraseInclude->isChecked();
+
+	auto sExcludeText = ui->textBrowser_excludeText->toPlainText().trimmed();
+	auto bIsCaseSensetiveExclude = ui->checkBoxCaseSensetiveExclude->isChecked();
+	auto bIsSearchFullPhraseExclude = ui->checkBoxSearchFullPhraseExclude->isChecked();
+
+	for(const auto &sPath: m_vecCurrentPaths) {
+		auto pFuncForCalc =
+			new MyParserRunnable(m_sPath + "/" + sPath, sIncludeText, sExcludeText, m_nVersion, m_bUseByteArrayToRead, bIsCaseSensetiveInclude,
+								 bIsSearchFullPhraseInclude, bIsCaseSensetiveExclude, bIsSearchFullPhraseExclude, m_bForceStop);
+		connect(pFuncForCalc, &MyParserRunnable::SignalSendResult, this, &MainWindow::SlotThreadEndWork);
 
 		m_objThreadPool.start(pFuncForCalc);
 	}
 }
 
-
-void MainWindow::on_button_Stop_released(){
-	//Накручиваем версию, выставляем флаг на сброс и чистим пул потоков
+void MainWindow::on_button_Stop_released() {
+	// Накручиваем версию, выставляем флаг на сброс и чистим пул потоков
 	++m_nVersion;
 	*m_bForceStop = true;
 	m_bForceStop.reset(new bool {false});
 	m_objThreadPool.clear();
 
-	//Выводим всё, что успели найти
+	// Выводим всё, что успели найти
 	ui->treeWidget->insertTopLevelItems(0, m_listLocalItems);
 	m_listLocalItems.clear();
 	ui->treeWidget->ReloadAllItems(GetAllCmbText());
 	ui->treeWidget->setEnabled(true);
 }
-

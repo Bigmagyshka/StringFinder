@@ -1,17 +1,17 @@
 #include "dialogchoosepath.h"
+
 #include "qthread.h"
 #include "ui_dialogchoosepath.h"
+
 #include <QFileDialog>
 
-DialogChoosePath::DialogChoosePath(QWidget *parent) :
-	QDialog(parent),
-	ui(new Ui::DialogChoosePath){
+DialogChoosePath::DialogChoosePath(QWidget *parent) : QDialog(parent), ui(new Ui::DialogChoosePath) {
 	ui->setupUi(this);
 }
 
-DialogChoosePath::DialogChoosePath(QString sPath, QString sInclude, QString sExclude, bool bIsUseSTDStream, int nThreads, QWidget *parent) :
-	QDialog(parent), ui(new Ui::DialogChoosePath)
-{
+DialogChoosePath::DialogChoosePath(QString sPath, QString sInclude, QString sExclude, bool bIsUseSTDStream, int nThreads, QWidget *parent)
+	: QDialog(parent)
+	, ui(new Ui::DialogChoosePath) {
 	ui->setupUi(this);
 	ui->textBrowser_Path->setText(sPath);
 	ui->textBrowser_Include->setText(sInclude);
@@ -19,37 +19,40 @@ DialogChoosePath::DialogChoosePath(QString sPath, QString sInclude, QString sExc
 	ui->checkBoxUseSTD->setChecked(bIsUseSTDStream);
 	ui->spinBox_ThreadCount->setValue(nThreads);
 	ui->spinBox_ThreadCount->setMaximum(QThread::idealThreadCount());
+
+	auto sVersion = "version: " + QString(APP_VERSION);
+	ui->version->setText(sVersion);
 }
 
-DialogChoosePath::~DialogChoosePath(){
+DialogChoosePath::~DialogChoosePath() {
 	delete ui;
 }
 
-QString DialogChoosePath::GetPath(){
+QString DialogChoosePath::GetPath() {
 	return ui->textBrowser_Path->text();
 }
 
-QString DialogChoosePath::GetInclude(){
+QString DialogChoosePath::GetInclude() {
 	return ui->textBrowser_Include->text();
 }
 
-QString DialogChoosePath::GetExclude(){
+QString DialogChoosePath::GetExclude() {
 	return ui->textBrowser_Exclude->text();
 }
 
-bool DialogChoosePath::GetIsUseSTDStream(){
+bool DialogChoosePath::GetIsUseSTDStream() {
 	return ui->checkBoxUseSTD->isChecked();
 }
 
-int DialogChoosePath::GetThreadCount(){
+int DialogChoosePath::GetThreadCount() {
 	return ui->spinBox_ThreadCount->value();
 }
 
-void DialogChoosePath::on_button_OpenPathDlg_clicked(){
+void DialogChoosePath::on_button_OpenPathDlg_clicked() {
 	auto sPathToOpenDlg = ui->textBrowser_Path->text();
 	sPathToOpenDlg.chop(sPathToOpenDlg.size() - sPathToOpenDlg.lastIndexOf("/"));
 	auto sPathName = QFileDialog::getExistingDirectory(this, tr("Path"), sPathToOpenDlg);
 
-	if (!sPathName.isEmpty())
+	if(!sPathName.isEmpty())
 		ui->textBrowser_Path->setText(sPathName);
 }
