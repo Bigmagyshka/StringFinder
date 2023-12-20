@@ -45,15 +45,18 @@ void MainWindow::ReadSettingsFromIni() {
 	auto mapSettings = FileHelper::ReadMapFromFile("Settings.ini");
 
 	if(mapSettings.empty()) {
-		QMessageBox::warning(this, tr(APP_NAME), tr("Settings.ini is empty or does not exist.\nIt will be created after the settings are applied."));
-		return;
-	}
+        QMessageBox::warning(this,
+                             tr(APP_NAME),
+                             tr("Settings.ini is empty or does not exist.\nIt will be created "
+                                "after the settings are applied."));
+        return;
+    }
 
-	if(mapSettings.contains("path"))
-		m_sPath = mapSettings ["path"];
+    if (mapSettings.contains("path"))
+        m_sPath = mapSettings["path"];
 
-	if(mapSettings.contains("include"))
-		m_sInclude = mapSettings ["include"];
+    if (mapSettings.contains("include"))
+        m_sInclude = mapSettings ["include"];
 
 	if(mapSettings.contains("exclude"))
 		m_sExclude = mapSettings ["exclude"];
@@ -125,11 +128,11 @@ QVector<QString> MainWindow::GetAllCmbText() {
 }
 
 void MainWindow::ReCreateDlgElements() {
-	auto [vecCurrentPaths, dSize] = GetPath2AllFiles();
-	m_vecCurrentPaths = vecCurrentPaths;
+    double dSize{0.0};
+    std::tie(m_vecCurrentPaths, dSize) = GetPath2AllFiles();
 
-	ui->lcd_Count->display(static_cast<double>(m_vecCurrentPaths.size()));
-	ui->lcd_Volume->display(dSize);
+    ui->lcd_Count->display(static_cast<double>(m_vecCurrentPaths.size()));
+    ui->lcd_Volume->display(dSize);
 
 	m_objThreadPool.clear();
 	++m_nVersion;
@@ -192,8 +195,11 @@ void MainWindow::ReCreateSearchZone() {
 }
 
 QPair<QVector<QString>, double> MainWindow::GetPath2AllFiles() {
-	QVector<QString> vecLocalPaths;
-	double dSize {0.0};
+    if (m_sPath.isEmpty())
+        return {{}, 0.0};
+
+    QVector<QString> vecLocalPaths;
+    double dSize {0.0};
 	QDirIterator it(m_sPath, QDir::Files, QDirIterator::Subdirectories);
 
 	auto sExcludeLines = m_sExclude.split(",", Qt::SkipEmptyParts);
@@ -264,8 +270,8 @@ void MainWindow::on_button_Search_released() {
 	if(ui->textBrowser_includeText->toPlainText().isEmpty())
 		return;
 
-	++m_nVersion;
-	m_objThreadPool.clear();
+    ++m_nVersion;
+    m_objThreadPool.clear();
 	ui->treeWidget->clear();
 	ui->treeWidget->setEnabled(false);
 	for(auto p: m_listLocalItems)
